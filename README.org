@@ -1,0 +1,113 @@
+* net_websocket
+websocket support
+** 选项 - io层
+#+begin_src go
+// ServerOption
+//go:generate gogen option -n ServerOption -o option.server.go
+func walleServer() interface{} {
+	return map[string]interface{}{
+		// Addr Server Addr. websocket监听地址
+		"Addr": string(":8080"),
+		// WsPath websocket server path。 路由
+		"WsPath": string("/ws"),
+		// Upgrade websocket upgrade
+		"Upgrade": (*websocket.Upgrader)(DefaultUpgrade),
+		// UpgradeFail upgrade fail notify.
+		"UpgradeFail": func(w http.ResponseWriter, r *http.Request, reason error) {},
+		// accepted load limit.链接数量限制
+		"AcceptLoadLimit": func(sess Session, cnt int64) bool { return false },
+		// Process Options 传递给process的选项。
+		"ProcessOptions": []process.ProcessOption{},
+		// process router。路由
+		"Router": Router(nil),
+		// SessionRouter custom session router。定制路由
+		"SessionRouter": func(sess Session, global Router) (r Router) { return global },
+		// log interface 日志接口
+		"Logger": (*zaplog.Logger)(zaplog.Default),
+		// SessionLogger custom session logger。定制日志接口
+		"SessionLogger": func(sess Session, global *zaplog.Logger) (r *zaplog.Logger) { return global },
+		// NewSession custom session。新链接通知
+		"NewSession": func(in Session, r *http.Request) (Session, error) { return in, nil },
+		// StopImmediately when session finish,business finish immediately.
+		// 链接断开后，是否停止处理流程。 应该根据业务分析决定。
+		"StopImmediately": false,
+		// ReadTimeout read timetout
+		"ReadTimeout": time.Duration(0),
+		// WriteTimeout write timeout
+		"WriteTimeout": time.Duration(0),
+		// MaxMessageLimit limit message size
+		"MaxMessageLimit": int(0),
+		// Write network data method.
+		"WriteMethods": WriteMethod(WriteAsync),
+		// SendQueueSize async send queue size
+		"SendQueueSize": int(1024),
+		// Heartbeat use websocket ping/pong.
+		"Heartbeat": time.Duration(0),
+		// HttpServeMux custom set mux
+		"HttpServeMux": (*http.ServeMux)(http.DefaultServeMux),
+	}
+}
+#+end_src
+
+** 服务器
+#+begin_src go
+import (
+	"fmt"
+
+	"github.com/walleframe/net_websocket"
+	"github.com/walleframe/walle/process"
+	"github.com/walleframe/walle/testpkg/wpb"
+	"github.com/walleframe/walle/zaplog"
+)
+
+func main() {
+	p := 12345
+	fmt.Println("port:", p)
+
+	zaplog.SetFrameLogger(zaplog.NoopLogger)
+	zaplog.SetLogicLogger(zaplog.NoopLogger)
+	// zaplog.SetFrameLogger(zaplog.GetLogicLogger())
+
+	wpb.RegisterWSvcService(process.GetRouter(), &wpb.WPBSvc{})
+	svc := net_websocket.NewServer()
+	svc.Run(fmt.Sprintf(":%d", p))
+}
+#+end_src
+
+** 客户端
+#+begin_src go
+package main
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/walleframe/net_websocket"
+	"github.com/walleframe/walle/testpkg/wpb"
+	"github.com/walleframe/walle/util"
+	"github.com/walleframe/walle/zaplog"
+)
+
+func main() {
+	zaplog.SetFrameLogger(zaplog.NoopLogger)
+	zaplog.SetLogicLogger(zaplog.NoopLogger)
+	// zaplog.SetFrameLogger(zaplog.GetLogicLogger())
+
+	cli, err := net_websocket.NewClient(
+		fmt.Sprintf("ws://localhost:%d/ws", 12345), nil,
+	)
+	if err != nil {
+		util.PanicIfError(err)
+	}
+	time.Sleep(time.Second)
+
+	wcli := wpb.NewWSvcClient(cli)
+	ctx := context.Background()
+
+	rs, err := wcli.Add(ctx, &wpb.AddRq{Params: []int64{100}})
+	fmt.Println(rs, err)
+}
+
+#+end_src
+
