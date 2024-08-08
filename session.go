@@ -236,7 +236,7 @@ type goServerContextPool struct {
 	sync.Pool
 }
 
-func (p *goServerContextPool) NewContext(inner *process.InnerOptions, opts *process.ProcessOptions, inPkg interface{}, handlers []process.MiddlewareFunc, loadFlag bool) process.Context {
+func (p *goServerContextPool) NewContext(inner *process.InnerOptions, opts *process.ProcessOptions, inPkg interface{}, handlers []process.MiddlewareFunc) process.Context {
 	ctx := p.Get().(*sessionCtx)
 	ctx.Inner = inner
 	ctx.Opts = opts
@@ -244,7 +244,6 @@ func (p *goServerContextPool) NewContext(inner *process.InnerOptions, opts *proc
 	ctx.Index = 0
 	ctx.Handlers = handlers
 	ctx.InPkg = inPkg
-	ctx.LoadFlag = loadFlag
 	ctx.Log = opts.Logger
 	ctx.FreeContext = ctx
 	ctx.WsSession = inner.BindData.(*WsSession)

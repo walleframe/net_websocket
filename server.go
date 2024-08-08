@@ -89,7 +89,6 @@ var DefaultUpgrade = &websocket.Upgrader{
 // WsServer websocket server
 type WsServer struct {
 	acceptLoad atomic.Int64
-	pkgLoad    atomic.Int64
 	sequence   atomic.Int64
 	opts       *ServerOptions
 	procInner  *process.InnerOptions
@@ -108,7 +107,6 @@ func NewServer(opts ...ServerOption) *WsServer {
 	s.server.Handler = s.opts.HttpServeMux
 	// process opts
 	s.procInner = process.NewInnerOptions(
-		process.WithInnerOptionLoad(&s.pkgLoad),
 		process.WithInnerOptionSequence(&s.sequence),
 	)
 	s.procOpts = process.NewProcessOptions(
@@ -156,7 +154,6 @@ func (s *WsServer) HttpServeWs(w http.ResponseWriter, r *http.Request) {
 		svr:  s,
 		RPCProcess: rpc.NewRPCProcess(
 			process.NewInnerOptions(
-				process.WithInnerOptionLoad(&s.pkgLoad),
 				process.WithInnerOptionSequence(&s.sequence),
 			),
 			process.NewProcessOptions(
